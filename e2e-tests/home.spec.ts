@@ -27,18 +27,44 @@ test.describe('Open roles listing', () => {
         await expect(page.getByTestId('apply-form')).toBeVisible();
     });
 
+    test('filters roles by department and location, resets, and shows no-match feedback', async ({ page }) => {
+        await page.goto('/');
+        const departmentFilter = page.getByTestId('department-filter');
+        const locationFilter = page.getByTestId('location-filter');
+        const resetButton = page.getByTestId('filters-reset');
+        const cards = page.locator('[data-testid="role-card"]:visible');
+
+        await departmentFilter.selectOption('Technology');
+        await expect(cards).toHaveCount(2);
+        await expect(cards.filter({ hasText: 'Senior Frontend Engineer' })).toBeVisible();
+
+        await departmentFilter.selectOption('');
+        await locationFilter.selectOption('Remote (US & Canada)');
+        await expect(cards).toHaveCount(2);
+
+        await departmentFilter.selectOption('Finance');
+        await expect(cards).toHaveCount(0);
+        await expect(page.getByTestId('filter-empty-state')).toBeVisible();
+
+        await resetButton.click();
+        await expect(cards).toHaveCount(expectedRoleCount);
+        await expect(page.getByTestId('filter-empty-state')).toBeHidden();
+        await expect(departmentFilter).toHaveValue('');
+        await expect(locationFilter).toHaveValue('');
+    });
+
     for (const { title, location } of [
         { title: 'Senior Frontend Engineer', location: 'Remote (US & Canada)' },
         { title: 'Financial Analyst', location: 'Woodinville, WA, USA' },
     ]) {
-        test(`keeps ${title} location on details, not starter cards`, async ({ page }) => {
+        test(`shows ${title} location on its role card`, async ({ page }) => {
             await page.goto('/');
             const card = page.getByTestId('role-card').filter({
                 has: page.getByRole('heading', { name: title, exact: true }),
             });
 
             await expect(card).toBeVisible();
-            await expect(card.getByText(location, { exact: true })).toHaveCount(0);
+            await expect(card.getByTestId('role-location')).toHaveText(location);
             await card.click();
             await expect(page.getByText(location, { exact: true })).toBeVisible();
         });
